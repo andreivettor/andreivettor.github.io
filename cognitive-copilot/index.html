@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cognitive Copilot</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Mono', 'SF Mono', 'Fira Code', monospace;
+    min-height: 100vh;
+    background: #0a0a0f;
+    color: #c8ccd4;
+    padding: 20px;
+  }
+  .container { max-width: 560px; margin: 0 auto; }
+  .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  h1 { font-size: 16px; font-weight: 500; color: #e2e4ea; letter-spacing: 0.04em; }
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, #6366F1 0%, #2a2d45 40%, transparent);
+    margin-bottom: 20px;
+  }
+  .breadcrumb {
+    display: flex; gap: 6px; align-items: center;
+    font-size: 11px; color: #4a4d5e; margin-bottom: 24px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .breadcrumb .active { color: #8B8FA3; }
+  .breadcrumb .sep { color: #2a2d45; }
+  .label { font-size: 13px; color: #8B8FA3; margin-bottom: 16px; }
+  .phase-btn {
+    width: 100%; padding: 14px 16px;
+    border: 1px solid #1e2030; background: #12131f; color: #c8ccd4;
+    font-family: inherit; font-size: 14px; text-align: left;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s ease;
+    display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px;
+  }
+  .phase-btn:hover { border-color: #2a2d45; background: #181a2a; }
+  .phase-btn.selected { border-color: var(--accent, #6366F1); background: color-mix(in srgb, var(--accent, #6366F1) 8%, #12131f); }
+  .phase-btn .icon { font-size: 18px; line-height: 1; }
+  .phase-btn .title { font-weight: 500; color: #e2e4ea; }
+  .phase-btn .desc { font-size: 12px; color: #6B7280; margin-top: 2px; }
+  .flag-btn {
+    padding: 8px 14px; border: 1px solid #1e2030; background: #12131f;
+    color: #8B8FA3; font-family: inherit; font-size: 12px;
+    cursor: pointer; border-radius: 20px; transition: all 0.15s ease;
+    margin-right: 6px; margin-bottom: 6px;
+  }
+  .flag-btn:hover { border-color: #2a2d45; }
+  .flag-btn.active { border-color: #F59E0B; background: rgba(245,158,11,0.08); color: #F59E0B; }
+  .flag-btn.active.warning { border-color: #EF4444; background: rgba(239,68,68,0.08); color: #EF4444; }
+  .next-btn {
+    padding: 12px 28px; border: none; background: #6366F1; color: #fff;
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s ease;
+    letter-spacing: 0.02em;
+  }
+  .next-btn:hover { background: #5558E6; }
+  .next-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .next-btn.done { background: #10B981; }
+  .next-btn.done:hover { background: #0EA472; }
+  .reset-btn {
+    padding: 10px 20px; border: 1px solid #2a2d45; background: transparent;
+    color: #8B8FA3; font-family: inherit; font-size: 13px;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s ease;
+  }
+  .reset-btn:hover { border-color: #6366F1; color: #c8ccd4; }
+  .small-btn { font-size: 11px; padding: 6px 12px; }
+  .btn-row { margin-top: 20px; display: flex; justify-content: space-between; }
+  .btn-row-right { margin-top: 20px; text-align: right; }
+  .resource-warning {
+    padding: 10px 14px; background: rgba(239,68,68,0.06);
+    border: 1px solid rgba(239,68,68,0.2); border-radius: 6px;
+    font-size: 12px; color: #EF4444; margin-bottom: 16px;
+  }
+  .flag-warning {
+    padding: 10px 14px; background: rgba(245,158,11,0.06);
+    border: 1px solid rgba(245,158,11,0.2); border-radius: 6px;
+    font-size: 12px; color: #F59E0B; margin-bottom: 16px;
+  }
+  .question { font-size: 15px; color: #e2e4ea; margin-bottom: 20px; line-height: 1.5; }
+  .resource-group { margin-bottom: 16px; }
+  .resource-label { font-size: 12px; color: #6B7280; margin-bottom: 6px; }
+  .step-item {
+    padding: 10px 14px; background: #12131f; border-left: 2px solid #2a2d45;
+    margin-bottom: 6px; font-size: 13px; line-height: 1.5; border-radius: 0 4px 4px 0;
+  }
+  .step-num { color: #4a4d5e; margin-right: 8px; }
+  .intervention-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .intervention-header h2 { font-size: 16px; font-weight: 500; color: #e2e4ea; }
+  .intervention-icon { font-size: 20px; }
+  .history-entry {
+    padding: 10px 14px; background: #12131f; border: 1px solid #1e2030;
+    border-radius: 6px; margin-bottom: 6px; font-size: 12px;
+  }
+  .history-row { display: flex; gap: 8px; align-items: center; }
+  .history-meta { color: #4a4d5e; margin-left: auto; }
+  .history-issues { color: #EF4444; margin-top: 4px; font-size: 11px; }
+  .history-action { color: #6B7280; margin-top: 4px; font-size: 11px; }
+  .footer {
+    margin-top: 40px; padding-top: 16px; border-top: 1px solid #1e2030;
+    font-size: 11px; color: #3a3d4e; text-align: center;
+  }
+  .fade-in { animation: fadeIn 0.25s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header-row">
+    <h1>COGNITIVE COPILOT</h1>
+    <button class="reset-btn small-btn" id="historyToggle" onclick="toggleHistory()">Log (0)</button>
+  </div>
+  <div class="divider"></div>
+
+  <div id="breadcrumb" class="breadcrumb"></div>
+
+  <div id="phase-state" class="fade-in"></div>
+  <div id="phase-resources" class="fade-in hidden"></div>
+  <div id="phase-flags" class="fade-in hidden"></div>
+  <div id="phase-probe" class="fade-in hidden"></div>
+  <div id="phase-intervention" class="fade-in hidden"></div>
+  <div id="phase-history" class="fade-in hidden"></div>
+
+  <div class="footer">cognitive copilot v0.1 — low-energy state debugging</div>
+</div>
+
+<script>
+const STATES = [
+  { id:"numb", label:"Numb", icon:"◇", desc:"Offline / dissociated", color:"#6B7280" },
+  { id:"overwhelmed", label:"Overwhelmed", icon:"◈", desc:"Recursive loops / flooded", color:"#EF4444" },
+  { id:"neutral", label:"Neutral", icon:"○", desc:"Idling / low activation", color:"#8B8FA3" },
+  { id:"content", label:"Content", icon:"●", desc:"Optimized / executing", color:"#10B981" },
+  { id:"sad", label:"Sad / Heavy", icon:"◉", desc:"Processing loss / failure", color:"#6366F1" }
+];
+
+const RESOURCES = [
+  { id:"sleep", label:"Sleep", question:"Sleep quality last night?" },
+  { id:"fuel", label:"Fuel", question:"Hours since last real meal?" },
+  { id:"stimulant", label:"Stimulants", question:"Caffeine / substance load?" },
+  { id:"social", label:"Social battery", question:"Social bandwidth remaining?" },
+  { id:"focus", label:"Focus hours", question:"Focused work done today?" }
+];
+
+const RESOURCE_OPTIONS = {
+  sleep: [
+    { label:"Bad (<5h or broken)", value:"low", flag:true },
+    { label:"Okay (5-7h)", value:"mid", flag:false },
+    { label:"Good (7h+)", value:"high", flag:false }
+  ],
+  fuel: [
+    { label:"4h+ / skipped", value:"low", flag:true },
+    { label:"2-4h ago", value:"mid", flag:false },
+    { label:"Recently fed", value:"high", flag:false }
+  ],
+  stimulant: [
+    { label:"None", value:"low", flag:false },
+    { label:"Moderate", value:"mid", flag:false },
+    { label:"Overcaffeinated", value:"high", flag:true }
+  ],
+  social: [
+    { label:"Depleted", value:"low", flag:true },
+    { label:"Some left", value:"mid", flag:false },
+    { label:"Full", value:"high", flag:false }
+  ],
+  focus: [
+    { label:"0h (haven't started)", value:"low", flag:false },
+    { label:"1-3h", value:"mid", flag:false },
+    { label:"4h+ (depleting)", value:"high", flag:true }
+  ]
+};
+
+const CONTEXT_FLAGS = [
+  { id:"analysis_paralysis", label:"Analysis paralysis", desc:"Stuck comparing options" },
+  { id:"novelty_hijack", label:"Novelty hijack", desc:"Shiny object pulling focus" },
+  { id:"fe_bleed", label:"Fe bleed", desc:"Unexplained irritability from social data" },
+  { id:"ti_si_loop", label:"Ti-Si loop", desc:"Re-analyzing past decisions" }
+];
+
+const PROBES = {
+  numb: {
+    question:"What was the last high-friction thought before shutdown?",
+    options:[
+      { label:"Can't identify one", next:"numb_deep" },
+      { label:"Specific event / thought", next:"numb_event" },
+      { label:"Gradual fade", next:"numb_fade" }
+    ]
+  },
+  overwhelmed: {
+    question:"List the top 3 future-projections (Scale Traps) running:",
+    options:[
+      { label:"Identified them", next:"overwhelmed_filter" },
+      { label:"Too many to list", next:"overwhelmed_triage" },
+      { label:"It's not thoughts, it's sensation", next:"overwhelmed_somatic" }
+    ]
+  },
+  neutral: {
+    question:"Is this rest or avoidance?",
+    options:[
+      { label:"Genuine rest — I chose this", next:"neutral_rest" },
+      { label:"Avoidance — dodging something", next:"neutral_avoidance" },
+      { label:"Don't know", next:"neutral_unknown" }
+    ]
+  },
+  content: {
+    question:"Are you optimizing the right objective function?",
+    options:[
+      { label:"Yes — aligned with priorities", next:"content_go" },
+      { label:"Comfortable but maybe wrong target", next:"content_check" },
+      { label:"Riding momentum, haven't checked", next:"content_audit" }
+    ]
+  },
+  sad: {
+    question:"Performance error (I failed) or systemic reality (life is hard)?",
+    options:[
+      { label:"Performance error", next:"sad_performance" },
+      { label:"Systemic reality", next:"sad_systemic" },
+      { label:"Both / unclear", next:"sad_both" }
+    ]
+  }
+};
+
+const INTERVENTIONS = {
+  numb_deep: {
+    title:"Deep Numbness Protocol",
+    steps:[
+      "This is protective. Don't force reboot.",
+      "Engage one physical sense: cold water on wrists, textured object, strong taste.",
+      "Set a 30-min timer. After it rings, re-check state.",
+      "If still numb after 2 cycles → this is a rest day. Accept it."
+    ]
+  },
+  numb_event: {
+    title:"Event-Triggered Shutdown",
+    steps:[
+      "Name the event in one sentence. Write it down.",
+      "Ask: 'Is this threat real and current, or a projection?'",
+      "If projection → label it ('future story') and set aside.",
+      "If real → what's the smallest action that addresses it?"
+    ]
+  },
+  numb_fade: {
+    title:"Gradual Fade Recovery",
+    steps:[
+      "Check resources first — this is often physiological.",
+      "If resources are fine: you're likely avoiding accumulated micro-stressors.",
+      "List 3 things that have been 'slightly off' this week.",
+      "Pick one. Do one small thing about it. Ignore the rest today."
+    ]
+  },
+  overwhelmed_filter: {
+    title:"Scale Trap Filter",
+    steps:[
+      "For each of the 3: Can you influence this in the next 24 hours?",
+      "If NO → delete from active processing. It's not your problem today.",
+      "If YES → what's the single next physical action?",
+      "Do that one action. Then re-check state."
+    ]
+  },
+  overwhelmed_triage: {
+    title:"Emergency Triage",
+    steps:[
+      "Stop. You're in a recursive loop — more thinking won't help.",
+      "Write a brain dump: 2 minutes, everything out, don't organize.",
+      "Circle the ONE thing with the nearest deadline.",
+      "Ignore everything else. Work on that for 25 min (one pomodoro)."
+    ]
+  },
+  overwhelmed_somatic: {
+    title:"Somatic Overwhelm",
+    steps:[
+      "This isn't cognitive — it's nervous system activation.",
+      "Resource check is critical: sleep + fuel are likely the cause.",
+      "If resources are depleted → fix that first, not the task list.",
+      "If resources are okay → 5 min walk, change physical environment."
+    ]
+  },
+  neutral_rest: {
+    title:"Genuine Rest",
+    steps:[
+      "Good. Stay here. Don't guilt-trip yourself into productivity.",
+      "Optional: identify the highest-leverage micro-action for later.",
+      "Set a re-entry time ('I'll check in again at X').",
+      "Rest is maintenance, not failure."
+    ]
+  },
+  neutral_avoidance: {
+    title:"Avoidance Detection",
+    steps:[
+      "Name what you're avoiding. Say it out loud or write it.",
+      "Ask: what's the worst realistic outcome of engaging with it?",
+      "Usually: the friction of starting > the actual difficulty.",
+      "Commit to 5 minutes on it. Just 5. Then you can stop."
+    ]
+  },
+  neutral_unknown: {
+    title:"State Ambiguity",
+    steps:[
+      "Check context flags — is analysis paralysis or Ti-Si loop active?",
+      "If yes → the 'not knowing' IS the avoidance pattern.",
+      "Try: stand up, walk to a different room, then ask again.",
+      "Physical state change often clarifies mental state."
+    ]
+  },
+  content_go: {
+    title:"Execute",
+    steps:[
+      "You're in flow. Protect this state.",
+      "Identify the highest-leverage action for the next 25 min.",
+      "Block distractions. Decline interruptions.",
+      "Log what you accomplish — this data helps future you."
+    ]
+  },
+  content_check: {
+    title:"Comfort Audit",
+    steps:[
+      "You might be optimizing an easy problem to avoid a hard one.",
+      "Ask: 'If I could only do ONE thing today, would it be this?'",
+      "If no → name the real priority. Switch to it.",
+      "If yes → you're fine. Execute."
+    ]
+  },
+  content_audit: {
+    title:"Momentum Check",
+    steps:[
+      "Pause for 60 seconds. Don't lose the energy, just check direction.",
+      "What are your top 3 priorities this week?",
+      "Is current activity serving one of them?",
+      "If yes → continue. If no → redirect while energy is high."
+    ]
+  },
+  sad_performance: {
+    title:"Performance Error Processing",
+    steps:[
+      "Separate the event from your identity. You made an error ≠ you are an error.",
+      "What specifically went wrong? (Not 'everything' — be precise.)",
+      "What would you do differently with the same information you had then?",
+      "If nothing → it wasn't actually an error. It was a reasonable bet that didn't pay off."
+    ]
+  },
+  sad_systemic: {
+    title:"Systemic Reality Processing",
+    steps:[
+      "This is grief or frustration, not a bug to fix.",
+      "Acknowledge: 'This is genuinely hard and I'm not wrong to feel this.'",
+      "Time-box the processing: feel it fully for 15 min.",
+      "Then ask: what's one thing within my control that I can improve?"
+    ]
+  },
+  sad_both: {
+    title:"Mixed Processing",
+    steps:[
+      "Separate the two: write what you did vs what happened to you.",
+      "Process the systemic part first (it's the foundation).",
+      "Then look at the performance part without the weight of the systemic.",
+      "Often: the 'failure' was actually reasonable given the constraints."
+    ]
+  }
+};
+
+const PHASE_LABELS = { state:"State", resources:"Resources", flags:"Flags", probe:"Probe", intervention:"Action" };
+const PHASE_ORDER = ["state","resources","flags","probe","intervention"];
+
+let state = {
+  phase: "state",
+  selectedState: null,
+  resources: {},
+  flags: {},
+  probeAnswer: null,
+  interventionKey: null,
+  history: JSON.parse(localStorage.getItem("copilot_history") || "[]"),
+  showHistory: false
+};
+
+function getResourceFlags() {
+  return Object.entries(state.resources).filter(([k,v]) => {
+    const opt = RESOURCE_OPTIONS[k]?.find(o => o.value === v);
+    return opt?.flag;
+  });
+}
+
+function saveHistory() {
+  localStorage.setItem("copilot_history", JSON.stringify(state.history.slice(0, 50)));
+}
+
+function toggleHistory() {
+  state.showHistory = !state.showHistory;
+  render();
+}
+
+function selectState(id) {
+  state.selectedState = id;
+  render();
+}
+
+function selectResource(resId, value) {
+  state.resources[resId] = value;
+  render();
+}
+
+function toggleFlag(id) {
+  state.flags[id] = !state.flags[id];
+  render();
+}
+
+function selectProbe(next) {
+  state.probeAnswer = next;
+  state.interventionKey = next;
+  render();
+}
+
+function goPhase(p) {
+  state.phase = p;
+  render();
+}
+
+function reset() {
+  if (state.selectedState && state.interventionKey) {
+    state.history.unshift({
+      ts: new Date().toISOString(),
+      state: state.selectedState,
+      resources: {...state.resources},
+      flags: {...state.flags},
+      intervention: state.interventionKey,
+      resourceIssues: getResourceFlags().map(([k]) => k)
+    });
+    saveHistory();
+  }
+  state.phase = "state";
+  state.selectedState = null;
+  state.resources = {};
+  state.flags = {};
+  state.probeAnswer = null;
+  state.interventionKey = null;
+  render();
+}
+
+function render() {
+  document.getElementById("historyToggle").textContent = state.showHistory ? "← Back" : `Log (${state.history.length})`;
+
+  // Hide all phases
+  document.querySelectorAll('[id^="phase-"]').forEach(el => el.classList.add("hidden"));
+
+  // Breadcrumb
+  const bc = document.getElementById("breadcrumb");
+  if (state.showHistory) {
+    bc.innerHTML = '<span class="active">LOG</span>';
+    renderHistory();
+    return;
+  }
+  const idx = PHASE_ORDER.indexOf(state.phase);
+  bc.innerHTML = PHASE_ORDER.slice(0, idx + 1).map((p, i) =>
+    (i > 0 ? '<span class="sep"> → </span>' : '') +
+    `<span class="${i === idx ? 'active' : ''}">${PHASE_LABELS[p]}</span>`
+  ).join('');
+
+  // Render current phase
+  if (state.phase === "state") renderState();
+  else if (state.phase === "resources") renderResources();
+  else if (state.phase === "flags") renderFlags();
+  else if (state.phase === "probe") renderProbe();
+  else if (state.phase === "intervention") renderIntervention();
+}
+
+function renderState() {
+  const el = document.getElementById("phase-state");
+  el.classList.remove("hidden");
+  el.innerHTML = `
+    <p class="label">What's the core pulse right now?</p>
+    ${STATES.map(s => `
+      <button class="phase-btn ${state.selectedState === s.id ? 'selected' : ''}"
+        style="--accent:${s.color}" onclick="selectState('${s.id}')">
+        <span class="icon" style="color:${s.color}">${s.icon}</span>
+        <div>
+          <div class="title">${s.label}</div>
+          <div class="desc">${s.desc}</div>
+        </div>
+      </button>
+    `).join('')}
+    <div class="btn-row-right">
+      <button class="next-btn" ${!state.selectedState ? 'disabled' : ''} onclick="goPhase('resources')">Next →</button>
+    </div>
+  `;
+}
+
+function renderResources() {
+  const el = document.getElementById("phase-resources");
+  el.classList.remove("hidden");
+  el.innerHTML = `
+    <p class="label">Quick resource check:</p>
+    ${RESOURCES.map(r => `
+      <div class="resource-group">
+        <p class="resource-label">${r.question}</p>
+        <div>
+          ${RESOURCE_OPTIONS[r.id].map(opt => {
+            const isSelected = state.resources[r.id] === opt.value;
+            const isWarning = isSelected && opt.flag;
+            return `<button class="flag-btn ${isSelected ? 'active' : ''} ${isWarning ? 'warning' : ''}"
+              onclick="selectResource('${r.id}','${opt.value}')">${opt.label}</button>`;
+          }).join('')}
+        </div>
+      </div>
+    `).join('')}
+    <div class="btn-row">
+      <button class="reset-btn" onclick="goPhase('state')">← Back</button>
+      <button class="next-btn" onclick="goPhase('flags')">Next →</button>
+    </div>
+  `;
+}
+
+function renderFlags() {
+  const el = document.getElementById("phase-flags");
+  el.classList.remove("hidden");
+  const rf = getResourceFlags();
+  el.innerHTML = `
+    <p class="label">Any of these active? (tap to toggle)</p>
+    ${CONTEXT_FLAGS.map(f => `
+      <button class="phase-btn ${state.flags[f.id] ? 'selected' : ''}"
+        style="--accent:#F59E0B" onclick="toggleFlag('${f.id}')">
+        <span style="font-size:14px;color:${state.flags[f.id] ? '#F59E0B' : '#4a4d5e'}">${state.flags[f.id] ? '■' : '□'}</span>
+        <div>
+          <div class="title">${f.label}</div>
+          <div class="desc">${f.desc}</div>
+        </div>
+      </button>
+    `).join('')}
+    ${rf.length > 0 ? `<div class="resource-warning" style="margin-top:16px">⚠ Resource deficit detected: ${rf.map(([k]) => k).join(', ')}. Your current state may be physiological, not cognitive.</div>` : ''}
+    <div class="btn-row">
+      <button class="reset-btn" onclick="goPhase('resources')">← Back</button>
+      <button class="next-btn" onclick="goPhase('probe')">Next →</button>
+    </div>
+  `;
+}
+
+function renderProbe() {
+  const el = document.getElementById("phase-probe");
+  el.classList.remove("hidden");
+  const probe = PROBES[state.selectedState];
+  const stateObj = STATES.find(s => s.id === state.selectedState);
+  const rf = getResourceFlags();
+  el.innerHTML = `
+    ${rf.length > 0 ? `<div class="resource-warning">⚠ Fix resources first? ${rf.map(([k]) => k).join(', ')} flagged. Your "${stateObj.label}" state may resolve with basic maintenance.</div>` : ''}
+    <p class="question">${probe.question}</p>
+    ${probe.options.map(opt => `
+      <button class="phase-btn ${state.probeAnswer === opt.next ? 'selected' : ''}"
+        onclick="selectProbe('${opt.next}')">
+        <span style="color:#6366F1">›</span>
+        <span>${opt.label}</span>
+      </button>
+    `).join('')}
+    <div class="btn-row">
+      <button class="reset-btn" onclick="goPhase('flags')">← Back</button>
+      <button class="next-btn" ${!state.probeAnswer ? 'disabled' : ''} onclick="goPhase('intervention')">Show protocol →</button>
+    </div>
+  `;
+}
+
+function renderIntervention() {
+  const el = document.getElementById("phase-intervention");
+  el.classList.remove("hidden");
+  const intervention = INTERVENTIONS[state.interventionKey];
+  const stateObj = STATES.find(s => s.id === state.selectedState);
+  const activeFlags = CONTEXT_FLAGS.filter(f => state.flags[f.id]);
+  el.innerHTML = `
+    <div class="intervention-header">
+      <span class="intervention-icon" style="color:${stateObj.color}">${stateObj.icon}</span>
+      <h2>${intervention.title}</h2>
+    </div>
+    ${activeFlags.length > 0 ? `<div class="flag-warning">Active flags: ${activeFlags.map(f => f.label).join(', ')}. Factor these into your decision.</div>` : ''}
+    <div style="margin-bottom:20px">
+      ${intervention.steps.map((step, i) => `
+        <div class="step-item"><span class="step-num">${i+1}.</span>${step}</div>
+      `).join('')}
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="reset-btn" onclick="goPhase('probe')">← Back</button>
+      <button class="next-btn done" onclick="reset()">✓ Done — new check-in</button>
+    </div>
+  `;
+}
+
+function renderHistory() {
+  const el = document.getElementById("phase-history");
+  el.classList.remove("hidden");
+  if (state.history.length === 0) {
+    el.innerHTML = '<p style="font-size:13px;color:#4a4d5e">No entries yet. Complete a check-in to log data.</p>';
+    return;
+  }
+  el.innerHTML = `
+    <p style="font-size:12px;color:#6B7280;margin-bottom:12px">Session history (most recent first):</p>
+    ${state.history.map(h => {
+      const s = STATES.find(st => st.id === h.state);
+      const time = new Date(h.ts).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `<div class="history-entry">
+        <div class="history-row">
+          <span style="color:${s?.color}">${s?.icon}</span>
+          <span style="color:${s?.color};font-weight:500">${s?.label}</span>
+          <span class="history-meta">${time}</span>
+        </div>
+        ${h.resourceIssues?.length > 0 ? `<div class="history-issues">⚠ ${h.resourceIssues.join(', ')}</div>` : ''}
+        <div class="history-action">→ ${INTERVENTIONS[h.intervention]?.title}</div>
+      </div>`;
+    }).join('')}
+    <div style="margin-top:16px">
+      <button class="reset-btn" onclick="if(confirm('Clear all history?')){state.history=[];saveHistory();render();}">Clear history</button>
+    </div>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>
